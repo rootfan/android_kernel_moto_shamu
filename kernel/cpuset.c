@@ -813,7 +813,7 @@ static int cpuset_test_cpumask(struct task_struct *tsk,
 			       struct cgroup_scanner *scan)
 {
 	return !cpumask_equal(&tsk->cpus_allowed,
-			(cgroup_cs(scan->cg))->cpus_allowed);
+			(cgroup_cs(scan->cgrp))->cpus_allowed);
 }
 
 /**
@@ -830,7 +830,7 @@ static int cpuset_test_cpumask(struct task_struct *tsk,
 static void cpuset_change_cpumask(struct task_struct *tsk,
 				  struct cgroup_scanner *scan)
 {
-	set_cpus_allowed_ptr(tsk, ((cgroup_cs(scan->cg))->cpus_allowed));
+	set_cpus_allowed_ptr(tsk, ((cgroup_cs(scan->cgrp))->cpus_allowed));
 }
 
 /**
@@ -850,7 +850,7 @@ static void update_tasks_cpumask(struct cpuset *cs, struct ptr_heap *heap)
 {
 	struct cgroup_scanner scan;
 
-	scan.cg = cs->css.cgroup;
+	scan.cgrp = cs->css.cgroup;
 	scan.test_task = cpuset_test_cpumask;
 	scan.process_task = cpuset_change_cpumask;
 	scan.heap = heap;
@@ -1021,7 +1021,7 @@ static void cpuset_change_nodemask(struct task_struct *p,
 	const nodemask_t *oldmem = scan->data;
 	static nodemask_t newmems;	/* protected by cpuset_mutex */
 
-	cs = cgroup_cs(scan->cg);
+	cs = cgroup_cs(scan->cgrp);
 	guarantee_online_mems(cs, &newmems);
 
 	cpuset_change_task_nodemask(p, &newmems);
@@ -1057,7 +1057,7 @@ static void update_tasks_nodemask(struct cpuset *cs, const nodemask_t *oldmem,
 
 	cpuset_being_rebound = cs;		/* causes mpol_dup() rebind */
 
-	scan.cg = cs->css.cgroup;
+	scan.cgrp = cs->css.cgroup;
 	scan.test_task = NULL;
 	scan.process_task = cpuset_change_nodemask;
 	scan.heap = heap;
@@ -1196,7 +1196,7 @@ static int update_relax_domain_level(struct cpuset *cs, s64 val)
 static void cpuset_change_flag(struct task_struct *tsk,
 				struct cgroup_scanner *scan)
 {
-	cpuset_update_task_spread_flag(cgroup_cs(scan->cg), tsk);
+	cpuset_update_task_spread_flag(cgroup_cs(scan->cgrp), tsk);
 }
 
 /*
@@ -1216,7 +1216,7 @@ static void update_tasks_flags(struct cpuset *cs, struct ptr_heap *heap)
 {
 	struct cgroup_scanner scan;
 
-	scan.cg = cs->css.cgroup;
+	scan.cgrp = cs->css.cgroup;
 	scan.test_task = NULL;
 	scan.process_task = cpuset_change_flag;
 	scan.heap = heap;
@@ -1912,7 +1912,7 @@ static int cpuset_css_online(struct cgroup *cgrp)
 	struct cpuset *cs = cgroup_cs(cgrp);
 	struct cpuset *parent = parent_cs(cs);
 	struct cpuset *tmp_cs;
-	struct cgroup *pos_cg;
+	struct cgroup *pos_cgrp;
 
 	if (!parent)
 		return 0;
@@ -1944,7 +1944,7 @@ static int cpuset_css_online(struct cgroup *cgrp)
 	 * (and likewise for mems) to the new cgroup.
 	 */
 	rcu_read_lock();
-	cpuset_for_each_child(tmp_cs, pos_cg, parent) {
+	cpuset_for_each_child(tmp_cs, pos_cgrp, parent) {
 		if (is_mem_exclusive(tmp_cs) || is_cpu_exclusive(tmp_cs)) {
 			rcu_read_unlock();
 			goto out_unlock;
