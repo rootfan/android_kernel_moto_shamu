@@ -815,7 +815,7 @@ static int cpuset_test_cpumask(struct task_struct *tsk,
 /**
  * cpuset_change_cpumask - make a task's cpus_allowed the same as its cpuset's
  * @tsk: task to test
- * @scan: struct cgroup_scanner containing the cgroup of the task
+ * @data: cpuset to @tsk belongs to
  *
  * Called by cgroup_scan_tasks() for each task in a cgroup whose
  * cpus_allowed mask needs to be changed.
@@ -823,10 +823,10 @@ static int cpuset_test_cpumask(struct task_struct *tsk,
  * We don't need to re-check for the cgroup/cpuset membership, since we're
  * holding cpuset_mutex at this point.
  */
-static void cpuset_change_cpumask(struct task_struct *tsk,
-				  struct cgroup_scanner *scan)
+static void cpuset_change_cpumask(struct task_struct *tsk, void *data)
 {
-	set_cpus_allowed_ptr(tsk, ((cgroup_cs(scan->cgrp))->cpus_allowed));
+	struct cpuset *cs = data;
+	set_cpus_allowed_ptr(tsk, cs->cpus_allowed);
 }
 
 /**
@@ -844,13 +844,8 @@ static void cpuset_change_cpumask(struct task_struct *tsk,
  */
 static void update_tasks_cpumask(struct cpuset *cs, struct ptr_heap *heap)
 {
-	struct cgroup_scanner scan;
-
-	scan.cgrp = cs->css.cgroup;
-	scan.test_task = cpuset_test_cpumask;
-	scan.process_task = cpuset_change_cpumask;
-	scan.heap = heap;
-	cgroup_scan_tasks(&scan);
+	cgroup_scan_tasks(cs->css.cgroup, cpuset_test_cpumask, cpuset_change_cpumask, cs,
+			  heap);
 }
 
 /**
@@ -1003,21 +998,25 @@ static void cpuset_change_task_nodemask(struct task_struct *tsk,
 	task_unlock(tsk);
 }
 
+struct cpuset_change_nodemask_arg {
+	struct cpuset		*cs;
+	nodemask_t		*oldmem;
+};
+
 /*
  * Update task's mems_allowed and rebind its mempolicy and vmas' mempolicy
  * of it to cpuset's new mems_allowed, and migrate pages to new nodes if
  * memory_migrate flag is set. Called with cpuset_mutex held.
  */
-static void cpuset_change_nodemask(struct task_struct *p,
-				   struct cgroup_scanner *scan)
+static void cpuset_change_nodemask(struct task_struct *p, void *data)
 {
+	struct cpuset_change_nodemask_arg *arg = data;
 	struct mm_struct *mm;
 	struct cpuset *cs;
 	int migrate;
-	const nodemask_t *oldmem = scan->data;
 	static nodemask_t newmems;	/* protected by cpuset_mutex */
 
-	cs = cgroup_cs(scan->cgrp);
+	cs = arg->cs;
 	guarantee_online_mems(cs, &newmems);
 
 	cpuset_change_task_nodemask(p, &newmems);
@@ -1030,7 +1029,7 @@ static void cpuset_change_nodemask(struct task_struct *p,
 
 	mpol_rebind_mm(mm, &cs->mems_allowed);
 	if (migrate)
-		cpuset_migrate_mm(mm, oldmem, &cs->mems_allowed);
+		cpuset_migrate_mm(mm, arg->oldmem, &cs->mems_allowed);
 	mmput(mm);
 }
 
@@ -1049,15 +1048,9 @@ static void *cpuset_being_rebound;
 static void update_tasks_nodemask(struct cpuset *cs, const nodemask_t *oldmem,
 				 struct ptr_heap *heap)
 {
-	struct cgroup_scanner scan;
-
+	struct cpuset_change_nodemask_arg arg = { .cs = cs,
+						  .oldmem = oldmem };
 	cpuset_being_rebound = cs;		/* causes mpol_dup() rebind */
-
-	scan.cgrp = cs->css.cgroup;
-	scan.test_task = NULL;
-	scan.process_task = cpuset_change_nodemask;
-	scan.heap = heap;
-	scan.data = (nodemask_t *)oldmem;
 
 	/*
 	 * The mpol_rebind_mm() call takes mmap_sem, which we couldn't
@@ -1069,7 +1062,8 @@ static void update_tasks_nodemask(struct cpuset *cs, const nodemask_t *oldmem,
 	 * It's ok if we rebind the same mm twice; mpol_rebind_mm()
 	 * is idempotent.  Also migrate pages in each mm to new nodes.
 	 */
-	cgroup_scan_tasks(&scan);
+	cgroup_scan_tasks(cs->css.cgroup, NULL, cpuset_change_nodemask, &arg,
+			  heap);
 
 	/* We're done rebinding vmas to this cpuset's new mems_allowed. */
 	cpuset_being_rebound = NULL;
@@ -1182,17 +1176,18 @@ static int update_relax_domain_level(struct cpuset *cs, s64 val)
 /*
  * cpuset_change_flag - make a task's spread flags the same as its cpuset's
  * @tsk: task to be updated
- * @scan: struct cgroup_scanner containing the cgroup of the task
+ * @data: cpuset to @tsk belongs to
  *
  * Called by cgroup_scan_tasks() for each task in a cgroup.
  *
  * We don't need to re-check for the cgroup/cpuset membership, since we're
  * holding cpuset_mutex at this point.
  */
-static void cpuset_change_flag(struct task_struct *tsk,
-				struct cgroup_scanner *scan)
+static void cpuset_change_flag(struct task_struct *tsk, void *data)
 {
-	cpuset_update_task_spread_flag(cgroup_cs(scan->cgrp), tsk);
+	struct cpuset *cs = data;
+
+	cpuset_update_task_spread_flag(cs, tsk);
 }
 
 /*
@@ -1210,13 +1205,7 @@ static void cpuset_change_flag(struct task_struct *tsk,
  */
 static void update_tasks_flags(struct cpuset *cs, struct ptr_heap *heap)
 {
-	struct cgroup_scanner scan;
-
-	scan.cgrp = cs->css.cgroup;
-	scan.test_task = NULL;
-	scan.process_task = cpuset_change_flag;
-	scan.heap = heap;
-	cgroup_scan_tasks(&scan);
+	cgroup_scan_tasks(cs->css.cgroup, NULL, cpuset_change_flag, cs, heap);
 }
 
 /*
