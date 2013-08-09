@@ -171,12 +171,12 @@ static void cgrp_css_free(struct cgroup *cgrp)
 	kfree(cgrp_netprio_state(cgrp));
 }
 
-static u64 read_prioidx(struct cgroup *cgrp, struct cftype *cft)
+static u64 read_prioidx(struct cgroup_subsys_state *css, struct cftype *cft)
 {
-	return cgrp->id;
+	return css->cgroup->id;
 }
 
-static int read_priomap(struct cgroup *cont, struct cftype *cft,
+static int read_priomap(struct cgroup_subsys_state *css, struct cftype *cft,
 			struct cgroup_map_cb *cb)
 {
 	struct net_device *dev;
@@ -188,7 +188,7 @@ static int read_priomap(struct cgroup *cont, struct cftype *cft,
 	return 0;
 }
 
-static int write_priomap(struct cgroup *cgrp, struct cftype *cft,
+static int write_priomap(struct cgroup_subsys_state *css, struct cftype *cft,
 			 const char *buffer)
 {
 	char devname[IFNAMSIZ + 1];
