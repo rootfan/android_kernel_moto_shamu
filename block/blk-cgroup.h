@@ -184,11 +184,6 @@ static inline struct blkcg *css_to_blkcg(struct cgroup_subsys_state *css)
 	return css ? container_of(css, struct blkcg, css) : NULL;
 }
 
-static inline struct blkcg *cgroup_to_blkcg(struct cgroup *cgroup)
-{
-	return css_to_blkcg(cgroup_css(cgroup, blkio_subsys_id));
-}
-
 static inline struct blkcg *task_blkcg(struct task_struct *tsk)
 {
 	return css_to_blkcg(task_css(tsk, blkio_subsys_id));
@@ -543,7 +538,6 @@ static inline int blkcg_activate_policy(struct request_queue *q,
 static inline void blkcg_deactivate_policy(struct request_queue *q,
 					   const struct blkcg_policy *pol) { }
 
-static inline struct blkcg *cgroup_to_blkcg(struct cgroup *cgroup) { return NULL; }
 static inline struct blkcg *bio_blkcg(struct bio *bio) { return NULL; }
 
 static inline struct blkg_policy_data *blkg_to_pd(struct blkcg_gq *blkg,
