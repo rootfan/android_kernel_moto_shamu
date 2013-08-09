@@ -110,12 +110,6 @@ static inline struct cpuset *css_cs(struct cgroup_subsys_state *css)
 	return css ? container_of(css, struct cpuset, css) : NULL;
 }
 
-/* Retrieve the cpuset for a cgroup */
-static inline struct cpuset *cgroup_cs(struct cgroup *cont)
-{
-	return css_cs(cgroup_css(cont, cpuset_subsys_id));
-}
-
 /* Retrieve the cpuset for a task */
 static inline struct cpuset *task_cs(struct task_struct *task)
 {
@@ -1374,7 +1368,7 @@ static int cpuset_can_attach(struct cgroup_subsys_state *css,
 	if (cpumask_empty(cs->cpus_allowed) || nodes_empty(cs->mems_allowed))
 		goto out_unlock;
 
-	cgroup_taskset_for_each(task, css->cgroup, tset) {
+	cgroup_taskset_for_each(task, css, tset) {
 		/*
 		 * Kthreads which disallow setaffinity shouldn't be moved
 		 * to a new cpuset; we don't want to change their cpu
@@ -1444,9 +1438,10 @@ static void cpuset_attach(struct cgroup_subsys_state *css,
 	struct mm_struct *mm;
 	struct task_struct *task;
 	struct task_struct *leader = cgroup_taskset_first(tset);
-	struct cgroup *oldcgrp = cgroup_taskset_cur_cgroup(tset);
+	struct cgroup_subsys_state *oldcss = cgroup_taskset_cur_css(tset,
+							cpuset_subsys_id);
 	struct cpuset *cs = css_cs(css);
-	struct cpuset *oldcs = cgroup_cs(oldcgrp);
+	struct cpuset *oldcs = css_cs(oldcss);
 
 	mutex_lock(&cpuset_mutex);
 
@@ -1458,7 +1453,7 @@ static void cpuset_attach(struct cgroup_subsys_state *css,
 
 	guarantee_online_mems(cs, &cpuset_attach_nodemask_to);
 
-	cgroup_taskset_for_each(task, css->cgroup, tset) {
+	cgroup_taskset_for_each(task, css, tset) {
 		/*
 		 * can_attach beforehand should guarantee that this doesn't
 		 * fail.  TODO: have a better way to handle failure here
