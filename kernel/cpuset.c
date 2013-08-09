@@ -213,7 +213,8 @@ static struct cpuset top_cpuset = {
  *
  * Walk @des_cs through the online descendants of @root_cs.  Must be used
  * with RCU read locked.  The caller may modify @pos_css by calling
- * css_rightmost_descendant() to skip subtree.
+ * css_rightmost_descendant() to skip subtree.  @root_cs is included in the
+ * iteration and the first node to be visited.
  */
 #define cpuset_for_each_descendant_pre(des_cs, pos_css, root_cs)	\
 	css_for_each_descendant_pre((pos_css), &(root_cs)->css)		\
@@ -513,6 +514,9 @@ static void update_domain_attr_tree(struct sched_domain_attr *dattr,
 
 	rcu_read_lock();
 	cpuset_for_each_descendant_pre(cp, pos_css, root_cs) {
+		if (cp == root_cs)
+			continue;
+
 		/* skip the whole subtree if @cp doesn't have any CPU */
 		if (cpumask_empty(cp->cpus_allowed)) {
 			pos_css = css_rightmost_descendant(pos_css);
@@ -620,6 +624,8 @@ static int generate_sched_domains(cpumask_var_t **domains,
 
 	rcu_read_lock();
 	cpuset_for_each_descendant_pre(cp, pos_css, &top_cpuset) {
+		if (cp == &top_cpuset)
+			continue;
 		/*
 		 * Continue traversing beyond @cp iff @cp has some CPUs and
 		 * isn't load balancing.  The former is obvious.  The
@@ -2199,8 +2205,11 @@ static void cpuset_hotplug_workfn(struct work_struct *work)
 		struct cgroup_subsys_state *pos_css;
 
 		rcu_read_lock();
-		cpuset_for_each_descendant_pre(cs, pos_css, &top_cpuset)
+		cpuset_for_each_descendant_pre(cs, pos_css, &top_cpuset){
+			if (cs == &top_cpuset)
+				continue;
 			schedule_cpuset_propagate_hotplug(cs);
+		}
 		rcu_read_unlock();
 	}
 
