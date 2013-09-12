@@ -1303,17 +1303,19 @@ error_put_device:
 	return error;
 }
 
-int netdev_class_create_file(struct class_attribute *class_attr)
+int netdev_class_create_file_ns(struct class_attribute *class_attr,
+				const void *ns)
 {
-	return class_create_file(&net_class, class_attr);
+	return class_create_file_ns(&net_class, class_attr, ns);
 }
-EXPORT_SYMBOL(netdev_class_create_file);
+EXPORT_SYMBOL(netdev_class_create_file_ns);
 
-void netdev_class_remove_file(struct class_attribute *class_attr)
+void netdev_class_remove_file_ns(struct class_attribute *class_attr,
+				 const void *ns)
 {
-	class_remove_file(&net_class, class_attr);
+	class_remove_file_ns(&net_class, class_attr, ns);
 }
-EXPORT_SYMBOL(netdev_class_remove_file);
+EXPORT_SYMBOL(netdev_class_remove_file_ns);
 
 int netdev_kobject_init(void)
 {
