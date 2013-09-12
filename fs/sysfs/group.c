@@ -23,7 +23,7 @@ static void remove_files(struct sysfs_dirent *dir_sd, struct kobject *kobj,
 	int i;
 
 	for (i = 0, attr = grp->attrs; *attr; i++, attr++)
-		sysfs_hash_and_remove(dir_sd, NULL, (*attr)->name);
+		sysfs_hash_and_remove(dir_sd, (*attr)->name, NULL);
 }
 
 static int create_files(struct sysfs_dirent *dir_sd, struct kobject *kobj,
@@ -39,7 +39,7 @@ static int create_files(struct sysfs_dirent *dir_sd, struct kobject *kobj,
 		 * visibility.  Do this by first removing then
 		 * re-adding (if required) the file */
 		if (update)
-			sysfs_hash_and_remove(dir_sd, NULL, (*attr)->name);
+			sysfs_hash_and_remove(dir_sd, (*attr)->name, NULL);
 		if (grp->is_visible) {
 			mode = grp->is_visible(kobj, *attr, i);
 			if (!mode)
@@ -178,7 +178,7 @@ int sysfs_merge_group(struct kobject *kobj,
 		error = sysfs_add_file(dir_sd, *attr, SYSFS_KOBJ_ATTR);
 	if (error) {
 		while (--i >= 0)
-			sysfs_hash_and_remove(dir_sd, NULL, (*--attr)->name);
+			sysfs_hash_and_remove(dir_sd, (*--attr)->name, NULL);
 	}
 	sysfs_put(dir_sd);
 
@@ -200,7 +200,7 @@ void sysfs_unmerge_group(struct kobject *kobj,
 	dir_sd = sysfs_get_dirent(kobj->sd, grp->name);
 	if (dir_sd) {
 		for (attr = grp->attrs; *attr; ++attr)
-			sysfs_hash_and_remove(dir_sd, NULL, (*attr)->name);
+			sysfs_hash_and_remove(dir_sd, (*attr)->name, NULL);
 		sysfs_put(dir_sd);
 	}
 }
@@ -243,7 +243,7 @@ void sysfs_remove_link_from_group(struct kobject *kobj, const char *group_name,
 
 	dir_sd = sysfs_get_dirent(kobj->sd, group_name);
 	if (dir_sd) {
-		sysfs_hash_and_remove(dir_sd, NULL, link_name);
+		sysfs_hash_and_remove(dir_sd, link_name, NULL);
 		sysfs_put(dir_sd);
 	}
 }
