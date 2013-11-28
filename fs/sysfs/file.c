@@ -47,11 +47,6 @@ struct sysfs_open_dirent {
 	struct list_head	files; /* goes through sysfs_open_file.list */
 };
 
-static bool sysfs_is_bin(struct sysfs_dirent *sd)
-{
-	return sysfs_type(sd) == SYSFS_KOBJ_BIN_ATTR;
-}
-
 static struct sysfs_open_file *sysfs_of(struct file *file)
 {
 	return ((struct seq_file *)file->private_data)->private;
@@ -914,7 +909,7 @@ static const struct kernfs_ops sysfs_bin_kfops_rw = {
 };
 
 int sysfs_add_file_mode_ns(struct sysfs_dirent *dir_sd,
-			   const struct attribute *attr, int type,
+			   const struct attribute *attr, bool is_bin,
 			   umode_t amode, const void *ns)
 {
 	umode_t mode = (amode & S_IALLUGO) | S_IFREG;
@@ -924,7 +919,7 @@ int sysfs_add_file_mode_ns(struct sysfs_dirent *dir_sd,
 	loff_t size;
 	int rc;
 
-	if (type == SYSFS_KOBJ_ATTR) {
+	if (!is_bin) {
 		struct kobject *kobj = dir_sd->priv;
 		const struct sysfs_ops *sysfs_ops = kobj->ktype->sysfs_ops;
 
@@ -959,7 +954,7 @@ int sysfs_add_file_mode_ns(struct sysfs_dirent *dir_sd,
 		size = battr->size;
 	}
 
-	sd = sysfs_new_dirent(attr->name, mode, type);
+	sd = sysfs_new_dirent(attr->name, mode, SYSFS_KOBJ_ATTR);
 	if (!sd)
 		return -ENOMEM;
 
@@ -989,11 +984,10 @@ int sysfs_add_file_mode_ns(struct sysfs_dirent *dir_sd,
 	return rc;
 }
 
-
 int sysfs_add_file(struct sysfs_dirent *dir_sd, const struct attribute *attr,
-		   int type)
+		   bool is_bin)
 {
-	return sysfs_add_file_mode_ns(dir_sd, attr, type, attr->mode, NULL);
+	return sysfs_add_file_mode_ns(dir_sd, attr, is_bin, attr->mode, NULL);
 }
 
 /**
@@ -1007,8 +1001,7 @@ int sysfs_create_file_ns(struct kobject *kobj, const struct attribute *attr,
 {
 	BUG_ON(!kobj || !kobj->sd || !attr);
 
-	return sysfs_add_file_mode_ns(kobj->sd, attr, SYSFS_KOBJ_ATTR,
-				      attr->mode, ns);
+	return sysfs_add_file_mode_ns(kobj->sd, attr, false, attr->mode, ns);
 
 }
 EXPORT_SYMBOL_GPL(sysfs_create_file_ns);
@@ -1046,7 +1039,7 @@ int sysfs_add_file_to_group(struct kobject *kobj,
 	if (!dir_sd)
 		return -ENOENT;
 
-	error = sysfs_add_file(dir_sd, attr, SYSFS_KOBJ_ATTR);
+	error = sysfs_add_file(dir_sd, attr, false);
 	sysfs_put(dir_sd);
 
 	return error;
@@ -1138,7 +1131,7 @@ int sysfs_create_bin_file(struct kobject *kobj,
 {
 	BUG_ON(!kobj || !kobj->sd || !attr);
 
-	return sysfs_add_file(kobj->sd, &attr->attr, SYSFS_KOBJ_BIN_ATTR);
+	return sysfs_add_file(kobj->sd, &attr->attr, true);
 }
 EXPORT_SYMBOL_GPL(sysfs_create_bin_file);
 
