@@ -489,8 +489,6 @@ struct cftype {
 	 * kick type for multiplexing.
 	 */
 	int (*trigger)(struct cgroup_subsys_state *css, unsigned int event);
-
-	int (*release)(struct inode *inode, struct file *file);
 };
 
 /*
