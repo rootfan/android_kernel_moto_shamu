@@ -264,12 +264,6 @@ void kernfs_put(struct kernfs_node *kn)
 }
 EXPORT_SYMBOL_GPL(kernfs_put);
 
-static int kernfs_dop_delete(const struct dentry *dentry)
-{
-	struct kernfs_node *kn = dentry->d_fsdata;
-	return !(kn && !(kn->flags & KERNFS_REMOVED));
-}
-
 static int kernfs_dop_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	struct kernfs_node *kn;
@@ -277,6 +271,10 @@ static int kernfs_dop_revalidate(struct dentry *dentry, unsigned int flags)
 
 	if (flags & LOOKUP_RCU)
 		return -ECHILD;
+
+	/* Always perform fresh lookup for negatives */
+	if (!dentry->d_inode)
+		goto out_bad_unlocked;
 
 	kn = dentry->d_fsdata;
 	mutex_lock(&kernfs_mutex);
@@ -302,6 +300,8 @@ static int kernfs_dop_revalidate(struct dentry *dentry, unsigned int flags)
 out_valid:
 	return 1;
 out_bad:
+	mutex_unlock(&kernfs_mutex);
+out_bad_unlocked:
 	/*
 	 * Remove the dentry from the dcache hashes.
 	 * If this is a deleted dentry we use d_drop instead of d_delete
@@ -314,7 +314,6 @@ out_bad:
 	 * to the dcache hashes.
 	 */
 	is_dir = (kernfs_type(kn) == KERNFS_DIR);
-	mutex_unlock(&kernfs_mutex);
 	if (is_dir) {
 		/* If we have submounts we must allow the vfs caches
 		 * to lie about the state of the filesystem to prevent
@@ -335,7 +334,6 @@ static void kernfs_dop_release(struct dentry *dentry)
 
 const struct dentry_operations kernfs_dops = {
 	.d_revalidate	= kernfs_dop_revalidate,
-	.d_delete	= kernfs_dop_delete,
 	.d_release	= kernfs_dop_release,
 };
 
@@ -686,7 +684,7 @@ static struct dentry *kernfs_iop_lookup(struct inode *dir,
 					struct dentry *dentry,
 					unsigned int flags)
 {
-	struct dentry *ret = NULL;
+	struct dentry *ret;
 	struct kernfs_node *parent = dentry->d_parent->d_fsdata;
 	struct kernfs_node *kn;
 	struct inode *inode;
@@ -701,7 +699,7 @@ static struct dentry *kernfs_iop_lookup(struct inode *dir,
 
 	/* no such entry */
 	if (!kn) {
-		ret = ERR_PTR(-ENOENT);
+		ret = NULL;
 		goto out_unlock;
 	}
 	kernfs_get(kn);
