@@ -128,7 +128,7 @@ void sysfs_delete_link(struct kobject *kobj, struct kobject *targ,
 	 */
 	spin_lock(&sysfs_symlink_target_lock);
 	if (targ->sd && kernfs_ns_enabled(kobj->sd))
-		ns = targ->sd->s_ns;
+		ns = targ->sd->ns;
 	spin_unlock(&sysfs_symlink_target_lock);
 	kernfs_remove_by_name_ns(kobj->sd, name, ns);
 }
@@ -174,7 +174,7 @@ int sysfs_rename_link_ns(struct kobject *kobj, struct kobject *targ,
 		parent = kobj->sd;
 
 	if (targ->sd)
-		old_ns = targ->sd->s_ns;
+		old_ns = targ->sd->ns;
 
 	result = -ENOENT;
 	kn = kernfs_find_and_get_ns(parent, old, old_ns);
@@ -184,7 +184,7 @@ int sysfs_rename_link_ns(struct kobject *kobj, struct kobject *targ,
 	result = -EINVAL;
 	if (sysfs_type(kn) != SYSFS_KOBJ_LINK)
 		goto out;
-	if (kn->s_symlink.target_kn->priv != targ)
+	if (kn->symlink.target_kn->priv != targ)
 		goto out;
 
 	result = kernfs_rename_ns(kn, parent, new, new_ns);
