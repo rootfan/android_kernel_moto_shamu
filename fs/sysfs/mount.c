@@ -27,13 +27,14 @@ static struct dentry *sysfs_mount(struct file_system_type *fs_type,
 {
 	struct dentry *root;
 	void *ns;
+	bool new_sb;
 
 	if (!(flags & MS_KERNMOUNT) && !current_user_ns()->may_mount_sysfs)
 		return ERR_PTR(-EPERM);
 
 	ns = kobj_ns_grab_current(KOBJ_NS_TYPE_NET);
-	root = kernfs_mount_ns(fs_type, flags, sysfs_root, ns);
-	if (IS_ERR(root))
+	root = kernfs_mount_ns(fs_type, flags, sysfs_root, &new_sb, ns);
+	if (IS_ERR(root) || !new_sb)
 		kobj_ns_drop(KOBJ_NS_TYPE_NET, ns);
 	return root;
 }
