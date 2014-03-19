@@ -189,7 +189,7 @@ static int read_priomap(struct cgroup_subsys_state *css, struct cftype *cft,
 }
 
 static int write_priomap(struct cgroup_subsys_state *css, struct cftype *cft,
-			 const char *buffer)
+			 char *buffer)
 {
 	char devname[IFNAMSIZ + 1];
 	struct net_device *dev;
