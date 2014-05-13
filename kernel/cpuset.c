@@ -2098,7 +2098,7 @@ static void schedule_cpuset_propagate_hotplug(struct cpuset *cs)
 	 * Pin @cs.  The refcnt will be released when the work item
 	 * finishes executing.
 	 */
-	if (!css_tryget(&cs->css))
+	if (!css_tryget_online(&cs->css))
 		return;
 
 	/*
