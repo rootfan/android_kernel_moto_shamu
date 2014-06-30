@@ -1615,7 +1615,17 @@ static ssize_t cpuset_write_resmask(struct kernfs_open_file *of,
 	 * Flushing cpuset_hotplug_work is enough to synchronize against
 	 * hotplug hanlding; however, cpuset_attach() may schedule
 	 * propagation work directly.  Flush the workqueue too.
+	 * cpuset_hotplug_work calls back into cgroup core via
+	 *
+	 * cgroup_transfer_tasks() and waiting for it from a cgroupfs
+	 * operation like this one can lead to a deadlock through kernfs
+	 * active_ref protection.  Let's break the protection.  Losing the
+	 * protection is okay as we check whether @cs is online after
+	 * grabbing cpuset_mutex anyway.  This only happens on the legacy
+	 * hierarchies.
 	 */
+	css_get(&cs->css);
+	kernfs_break_active_protection(of->kn);
 	flush_work(&cpuset_hotplug_work);
 	flush_workqueue(cpuset_propagate_hotplug_wq);
 
@@ -1644,6 +1654,8 @@ static ssize_t cpuset_write_resmask(struct kernfs_open_file *of,
 	free_trial_cpuset(trialcs);
 out_unlock:
 	mutex_unlock(&cpuset_mutex);
+	kernfs_unbreak_active_protection(of->kn);
+	css_put(&cs->css);
 	return retval ?: nbytes;
 }
 
