@@ -368,6 +368,26 @@ int pvclock_gtod_unregister_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(pvclock_gtod_unregister_notifier);
 
+/*
+ * Update the ktime_t based scalar nsec members of the timekeeper
+ */
+static inline void tk_update_ktime_data(struct timekeeper *tk)
+{
+	s64 nsec;
+
+	/*
+	 * The xtime based monotonic readout is:
+	 *	nsec = (xtime_sec + wtm_sec) * 1e9 + wtm_nsec + now();
+	 * The ktime based monotonic readout is:
+	 *	nsec = base_mono + now();
+	 * ==> base_mono = (xtime_sec + wtm_sec) * 1e9 + wtm_nsec
+	 */
+	nsec = (s64)(tk->xtime_sec + tk->wall_to_monotonic.tv_sec);
+	nsec *= NSEC_PER_SEC;
+	nsec += tk->wall_to_monotonic.tv_nsec;
+	tk->tkr.base_mono = ns_to_ktime(nsec);
+}
+
 /* must hold timekeeper_lock */
 static void timekeeping_update(struct timekeeper *tk, bool clearntp, bool mirror)
 {
@@ -377,6 +397,8 @@ static void timekeeping_update(struct timekeeper *tk, bool clearntp, bool mirror
 	}
 	update_vsyscall(tk);
 	update_pvclock_gtod(tk);
+	
+	tk_update_ktime_data(tk);
 
 	if (mirror)
 		memcpy(&shadow_timekeeper, &tk_core.timekeeper, sizeof(tk_core.timekeeper));
