@@ -57,7 +57,7 @@ static const struct tcf_ext_map bpf_ext_map = {
 static int cls_bpf_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 			    struct tcf_result *res)
 {
-	struct cls_bpf_head *head = rcu_dereference(tp->root);
+	struct cls_bpf_head *head = rcu_dereference_bh(tp->root);
 	struct cls_bpf_prog *prog;
 	int ret;
 
