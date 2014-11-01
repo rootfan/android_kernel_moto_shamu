@@ -76,6 +76,7 @@
 #include <linux/elevator.h>
 #include <linux/random.h>
 #include <linux/sched_clock.h>
+#include <linux/proc_ns.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -635,6 +636,7 @@ asmlinkage void __init start_kernel(void)
 #ifdef CONFIG_PROC_FS
 	proc_root_init();
 #endif
+	nsfs_init();
 	cgroup_init();
 	cpuset_init();
 	taskstats_init_early();
