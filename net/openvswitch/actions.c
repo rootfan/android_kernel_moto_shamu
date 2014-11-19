@@ -38,17 +38,6 @@
 static int do_execute_actions(struct datapath *dp, struct sk_buff *skb,
 			const struct nlattr *attr, int len, bool keep_skb);
 
-static int make_writable(struct sk_buff *skb, int write_len)
-{
-	if (!pskb_may_pull(skb, write_len))
-		return -ENOMEM;
-
-	if (!skb_cloned(skb) || skb_clone_writable(skb, write_len))
-		return 0;
-
-	return pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
-}
-
 static int pop_vlan(struct sk_buff *skb)
 {
 	return skb_vlan_pop(skb);
@@ -63,7 +52,7 @@ static int set_eth_addr(struct sk_buff *skb,
 			const struct ovs_key_ethernet *eth_key)
 {
 	int err;
-	err = make_writable(skb, ETH_HLEN);
+	err = skb_ensure_writable(skb, ETH_HLEN);
 	if (unlikely(err))
 		return err;
 
@@ -158,7 +147,7 @@ static int set_ipv4(struct sk_buff *skb, const struct ovs_key_ipv4 *ipv4_key)
 	struct iphdr *nh;
 	int err;
 
-	err = make_writable(skb, skb_network_offset(skb) +
+	err = skb_ensure_writable(skb, skb_network_offset(skb) +
 				 sizeof(struct iphdr));
 	if (unlikely(err))
 		return err;
@@ -187,7 +176,7 @@ static int set_ipv6(struct sk_buff *skb, const struct ovs_key_ipv6 *ipv6_key)
 	__be32 *saddr;
 	__be32 *daddr;
 
-	err = make_writable(skb, skb_network_offset(skb) +
+	err = skb_ensure_writable(skb, skb_network_offset(skb) +
 			    sizeof(struct ipv6hdr));
 	if (unlikely(err))
 		return err;
@@ -221,7 +210,7 @@ static int set_ipv6(struct sk_buff *skb, const struct ovs_key_ipv6 *ipv6_key)
 	return 0;
 }
 
-/* Must follow make_writable() since that can move the skb data. */
+/* Must follow skb_ensure_writable() since that can move the skb data. */
 static void set_tp_port(struct sk_buff *skb, __be16 *port,
 			 __be16 new_port, __sum16 *check)
 {
@@ -250,7 +239,7 @@ static int set_udp(struct sk_buff *skb, const struct ovs_key_udp *udp_port_key)
 	struct udphdr *uh;
 	int err;
 
-	err = make_writable(skb, skb_transport_offset(skb) +
+	err = skb_ensure_writable(skb, skb_transport_offset(skb) +
 				 sizeof(struct udphdr));
 	if (unlikely(err))
 		return err;
@@ -270,7 +259,7 @@ static int set_tcp(struct sk_buff *skb, const struct ovs_key_tcp *tcp_port_key)
 	struct tcphdr *th;
 	int err;
 
-	err = make_writable(skb, skb_transport_offset(skb) +
+	err = skb_ensure_writable(skb, skb_transport_offset(skb) +
 				 sizeof(struct tcphdr));
 	if (unlikely(err))
 		return err;

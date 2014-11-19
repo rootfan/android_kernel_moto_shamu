@@ -3509,13 +3509,25 @@ unsigned int skb_gso_transport_seglen(const struct sk_buff *skb)
 }
 EXPORT_SYMBOL_GPL(skb_gso_transport_seglen);
 
+int skb_ensure_writable(struct sk_buff *skb, int write_len)
+{
+       if (!pskb_may_pull(skb, write_len))
+               return -ENOMEM;
+
+       if (!skb_cloned(skb) || skb_clone_writable(skb, write_len))
+               return 0;
+
+       return pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+}
+EXPORT_SYMBOL(skb_ensure_writable);
+
 /* remove VLAN header from packet and update csum accordingly. */
 static int __pop_vlan_tci(struct sk_buff *skb, __be16 *current_tci)
 {
 	struct vlan_hdr *vhdr;
 	int err;
 
-	err = make_writable(skb, VLAN_ETH_HLEN);
+	err = skb_ensure_writable(skb, VLAN_ETH_HLEN);
 	if (unlikely(err))
 		return err;
 
