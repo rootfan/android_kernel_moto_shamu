@@ -3805,10 +3805,7 @@ static void *pidlist_allocate(int count)
 
 static void pidlist_free(void *p)
 {
-	if (is_vmalloc_addr(p))
-		vfree(p);
-	else
-		kfree(p);
+	kvfree(p);
 }
 
 /*
