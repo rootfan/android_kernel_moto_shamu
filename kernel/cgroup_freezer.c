@@ -193,7 +193,7 @@ static void freezer_attach(struct cgroup_subsys_state *new_css,
 	mutex_unlock(&freezer_mutex);
 }
 
-static void freezer_fork(struct task_struct *task)
+static void freezer_fork(struct task_struct *task, void *private)
 {
 	struct freezer *freezer;
 
