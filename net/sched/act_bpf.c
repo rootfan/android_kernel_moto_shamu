@@ -288,7 +288,7 @@ static int tcf_bpf_init(struct net *net, struct nlattr *nla,
 	struct tcf_bpf *prog;
 	bool is_bpf, is_ebpf;
 	struct tcf_common *pc;
-	int ret;
+	int ret, res = 0;
 
 	if (!nla)
 		return -EINVAL;
@@ -297,41 +297,43 @@ static int tcf_bpf_init(struct net *net, struct nlattr *nla,
 	if (ret < 0)
 		return ret;
 
-	is_bpf = tb[TCA_ACT_BPF_OPS_LEN] && tb[TCA_ACT_BPF_OPS];
-	is_ebpf = tb[TCA_ACT_BPF_FD];
-
-	if ((!is_bpf && !is_ebpf) || (is_bpf && is_ebpf) ||
-	    !tb[TCA_ACT_BPF_PARMS])
+	if (!tb[TCA_ACT_BPF_PARMS])
 		return -EINVAL;
 
 	parm = nla_data(tb[TCA_ACT_BPF_PARMS]);
+
+	pc = tcf_hash_check(parm->index, act, bind, &bpf_hash_info);
+	if (!pc) {
+	       pc = tcf_hash_create(parm->index, est, act,
+				     sizeof(*prog), bind, &bpf_idx_gen, &bpf_hash_info);
+	       if (IS_ERR(pc))
+		       return PTR_ERR(pc);
+
+		res = ACT_P_CREATED;
+	} else {
+		/* Don't override defaults. */
+		if (bind)
+			return 0;
+
+		tcf_hash_release(pc, bind, &bpf_hash_info);
+		if (!replace)
+			return -EEXIST;
+	}
+
+	is_bpf = tb[TCA_ACT_BPF_OPS_LEN] && tb[TCA_ACT_BPF_OPS];
+	is_ebpf = tb[TCA_ACT_BPF_FD];
+
+	if ((!is_bpf && !is_ebpf) || (is_bpf && is_ebpf)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	memset(&cfg, 0, sizeof(cfg));
 
 	ret = is_bpf ? tcf_bpf_init_from_ops(tb, &cfg) :
 		       tcf_bpf_init_from_efd(tb, &cfg);
 	if (ret < 0)
-		return ret;
-
-	pc = tcf_hash_check(parm->index, act, bind, &bpf_hash_info);
-	if (!pc) {
-		pc = tcf_hash_create(parm->index, est, act,
-				      sizeof(*prog), bind, &bpf_idx_gen, &bpf_hash_info);
-		if (IS_ERR(pc))
-			goto destroy_fp;
-
-		ret = ACT_P_CREATED;
-	} else {
-		/* Don't override defaults. */
-		if (bind)
-			goto destroy_fp;
-
-		tcf_hash_release(pc, bind, &bpf_hash_info);
-		if (!replace) {
-			ret = -EEXIST;
-			goto destroy_fp;
-		}
-	}
+		goto out;
 
 	prog = to_bpf(act);
 	spin_lock_bh(&prog->tcf_lock);
@@ -352,15 +354,20 @@ static int tcf_bpf_init(struct net *net, struct nlattr *nla,
 
 	spin_unlock_bh(&prog->tcf_lock);
 
-	if (ret == ACT_P_CREATED)
+	if (res == ACT_P_CREATED)
 		tcf_hash_insert(pc, &bpf_hash_info);
 	else
 		tcf_bpf_cfg_cleanup(&old);
 
-	return ret;
+	return res;
+out:
+       if (res == ACT_P_CREATED){
+               if(est)
+                       gen_kill_estimator(&pc->tcfc_bstats,
+                                       &pc->tcfc_rate_est);
+               kfree_rcu(pc, tcfc_rcu);
+       }
 
-destroy_fp:
-	tcf_bpf_cfg_cleanup(&cfg);
 	return ret;
 }
 
