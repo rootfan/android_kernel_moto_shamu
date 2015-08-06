@@ -259,6 +259,7 @@ enum bpf_func_id {
 	BPF_FUNC_get_cgroup_classid,
 	BPF_FUNC_skb_vlan_push, /* bpf_skb_vlan_push(skb, vlan_proto, vlan_tci) */
 	BPF_FUNC_skb_vlan_pop,  /* bpf_skb_vlan_pop(skb) */
+	BPF_FUNC_perf_event_read=22,	/* u64 bpf_perf_event_read(&map, index) */
 	__BPF_FUNC_MAX_ID,
 };
 
