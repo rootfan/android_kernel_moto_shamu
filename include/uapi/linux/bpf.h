@@ -260,6 +260,14 @@ enum bpf_func_id {
 	BPF_FUNC_skb_vlan_push, /* bpf_skb_vlan_push(skb, vlan_proto, vlan_tci) */
 	BPF_FUNC_skb_vlan_pop,  /* bpf_skb_vlan_pop(skb) */
 	BPF_FUNC_perf_event_read=22,	/* u64 bpf_perf_event_read(&map, index) */
+	/**
+	 * bpf_redirect(ifindex, flags) - redirect to another netdev
+	 * @ifindex: ifindex of the net device
+	 * @flags: bit 0 - if set, redirect to ingress instead of egress
+	 *         other bits - reserved
+	 * Return: TC_ACT_REDIRECT
+	 */
+	BPF_FUNC_redirect,
 	__BPF_FUNC_MAX_ID,
 };
 
