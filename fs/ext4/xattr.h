@@ -23,6 +23,7 @@
 #define EXT4_XATTR_INDEX_SECURITY	        6
 #define EXT4_XATTR_INDEX_SYSTEM			7
 #define EXT4_XATTR_INDEX_RICHACL		8
+#define EXT4_XATTR_INDEX_ENCRYPTION             9
 
 struct ext4_xattr_header {
 	__le32	h_magic;	/* magic number for identification */
@@ -110,6 +111,8 @@ extern const struct xattr_handler ext4_xattr_trusted_handler;
 extern const struct xattr_handler ext4_xattr_acl_access_handler;
 extern const struct xattr_handler ext4_xattr_acl_default_handler;
 extern const struct xattr_handler ext4_xattr_security_handler;
+
+#define EXT4_XATTR_NAME_ENCRYPTION_CONTEXT "c"
 
 /*
  * The EXT4_STATE_NO_EXPAND is overloaded and used for two purposes.
