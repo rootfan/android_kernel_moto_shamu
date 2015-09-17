@@ -1417,12 +1417,6 @@ struct ext4_sb_info {
 	struct percpu_counter s_extent_cache_cnt;
 	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
 
-#ifdef CONFIG_EXT4_FS_ENCRYPTION
-	/* Encryption */
-	uint32_t s_file_encryption_mode;
-	uint32_t s_dir_encryption_mode;
-#endif
-
 };
 
 static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
