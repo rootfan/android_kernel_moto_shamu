@@ -1395,7 +1395,7 @@ static int cpuset_can_attach(struct cgroup_subsys_state *css,
 
 	/* allow moving tasks into an empty cpuset if on default hierarchy */
 	ret = -ENOSPC;
-	if (!cgroup_on_dfl(css->cgroup) &&
+	if (!cgroup_subsys_on_dfl(cpuset_cgrp_subsys) &&
 	    (cpumask_empty(cs->cpus_allowed) || nodes_empty(cs->mems_allowed)))
 		goto out_unlock;
 
@@ -2060,7 +2060,7 @@ static void cpuset_hotplug_update_tasks(struct cpuset *cs)
 	static cpumask_t diff, new_allowed;
 	static nodemask_t off_mems;
 	bool is_empty;
-	bool on_dfl = cgroup_on_dfl(cs->css.cgroup);
+	bool on_dfl = cgroup_subsys_on_dfl(cpuset_cgrp_subsys);
 
 retry:
 	wait_event(cpuset_attach_wq, cs->attach_in_progress == 0);
