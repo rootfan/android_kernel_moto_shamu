@@ -6172,8 +6172,7 @@ static struct cftype mem_cgroup_files[] = {
 	{
 		.name = "cgroup.event_control",
 		.write = cgroup_write_event_control,
-		.flags = CFTYPE_NO_PREFIX,
-		.mode = S_IWUGO,
+		.flags = CFTYPE_NO_PREFIX | CFTYPE_WORLD_WRITABLE,
 	},
 	{
 		.name = "swappiness",
