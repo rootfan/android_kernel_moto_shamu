@@ -311,21 +311,17 @@ static int cls_bpf_modify_existing(struct net *net, struct tcf_proto *tp,
 {
 	bool is_bpf, is_ebpf, have_exts = false;
 	struct tcf_exts exts;
-	u32 classid;
 	int ret;
 
 	is_bpf = tb[TCA_BPF_OPS_LEN] && tb[TCA_BPF_OPS];
 	is_ebpf = tb[TCA_BPF_FD];
-
-	if ((!is_bpf && !is_ebpf) || (is_bpf && is_ebpf) ||
-	    !tb[TCA_BPF_CLASSID])
+	if ((!is_bpf && !is_ebpf) || (is_bpf && is_ebpf))
 		return -EINVAL;
 
 	ret = tcf_exts_validate(net, tp, tb, est, &exts, &bpf_ext_map);
 	if (ret < 0)
 		return ret;
 
-	classid = nla_get_u32(tb[TCA_BPF_CLASSID]);
 	if (tb[TCA_BPF_FLAGS]) {
 		u32 bpf_flags = nla_get_u32(tb[TCA_BPF_FLAGS]);
 
@@ -337,7 +333,6 @@ static int cls_bpf_modify_existing(struct net *net, struct tcf_proto *tp,
 		have_exts = bpf_flags & TCA_BPF_FLAG_ACT_DIRECT;
 	}
 
-	prog->res.classid = classid;
 	prog->exts_integrated = have_exts;
 
 	ret = is_bpf ? cls_bpf_prog_from_ops(tb, prog) :
@@ -347,9 +342,12 @@ static int cls_bpf_modify_existing(struct net *net, struct tcf_proto *tp,
 		return ret;
 	}
 
-	tcf_bind_filter(tp, &prog->res, base);
-	tcf_exts_change(tp, &prog->exts, &exts);
+	if (tb[TCA_BPF_CLASSID]) {
+		prog->res.classid = nla_get_u32(tb[TCA_BPF_CLASSID]);
+		tcf_bind_filter(tp, &prog->res, base);
+	}
 
+	tcf_exts_change(tp, &prog->exts, &exts);
 	return 0;
 }
 
@@ -479,7 +477,8 @@ static int cls_bpf_dump(struct tcf_proto *tp, unsigned long fh,
 	if (nest == NULL)
 		goto nla_put_failure;
 
-	if (nla_put_u32(skb, TCA_BPF_CLASSID, prog->res.classid))
+	if (prog->res.classid &&
+	    nla_put_u32(skb, TCA_BPF_CLASSID, prog->res.classid))
 		goto nla_put_failure;
 
 	if (cls_bpf_is_ebpf(prog))
