@@ -199,6 +199,10 @@ static u64 bpf_perf_event_read(u64 r1, u64 index, u64 r3, u64 r4, u64 r5)
 	if (!event)
 		return -ENOENT;
 
+	/* make sure event is local */
+	if (event->oncpu != smp_processor_id())
+		return -EINVAL;
+
 	/*
 	 * we don't know if the function is run successfully by the
 	 * return value. It can be judged in other places, such as
@@ -207,7 +211,7 @@ static u64 bpf_perf_event_read(u64 r1, u64 index, u64 r3, u64 r4, u64 r5)
 	return perf_event_read_local(event);
 }
 
-const struct bpf_func_proto bpf_perf_event_read_proto = {
+static const struct bpf_func_proto bpf_perf_event_read_proto = {
 	.func		= bpf_perf_event_read,
 	.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
