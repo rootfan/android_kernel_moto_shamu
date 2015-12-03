@@ -190,7 +190,7 @@ static void freezer_attach(struct cgroup_taskset *tset)
 	mutex_unlock(&freezer_mutex);
 }
 
-static void freezer_fork(struct task_struct *task, void *private)
+static void freezer_fork(struct task_struct *task)
 {
 	struct freezer *freezer;
 
