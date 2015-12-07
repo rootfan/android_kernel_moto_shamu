@@ -62,6 +62,7 @@
 #include <linux/kthread.h>
 
 #include <linux/atomic.h>
+#include <net/sock.h>
 
 /* css deactivation bias, makes css->refcnt negative to deny new trygets */
 #define CSS_DEACT_BIAS		INT_MIN
@@ -5386,6 +5387,42 @@ struct cgroup_subsys_state *cgroup_css_from_dir(struct file *f, int id)
 	cgrp = __d_cgrp(f->f_dentry);
 	css = cgrp->subsys[id];
 	return css ? css : ERR_PTR(-ENOENT);
+}
+
+static struct cgroupfs_root *findBpfCg(void){
+
+	struct cgroupfs_root *root;
+
+	for_each_active_root(root)
+		if(root->subsys_mask == 0)
+			return root;
+
+	return NULL;
+
+}
+
+void cgroup_sk_alloc(struct cgroup **skcg)
+{
+	struct cgroup *cgrp;
+	static struct cgroupfs_root *bpfRoot = NULL;
+
+	if(bpfRoot == NULL)
+		bpfRoot = findBpfCg();
+
+	if(bpfRoot){
+		mutex_lock(&cgroup_mutex);
+		cgrp = task_cgroup_from_root(current, bpfRoot);
+	        atomic_inc(&cgrp->count);
+		mutex_unlock(&cgroup_mutex);
+		*skcg = cgrp;
+	}
+	else
+		*skcg = NULL;
+}
+
+void cgroup_sk_free(struct cgroup *skcg)
+{
+	atomic_dec(&skcg->count);
 }
 
 #ifdef CONFIG_CGROUP_DEBUG

@@ -879,7 +879,8 @@ struct cgroup_subsys_state *cgroup_css_from_dir(struct file *f, int id);
 int subsys_cgroup_allow_attach(struct cgroup *cgrp,
 			       struct cgroup_taskset *tset);
 
-
+void cgroup_sk_alloc(struct cgroup **skcg);
+void cgroup_sk_free(struct cgroup *skcg);
 #else /* !CONFIG_CGROUPS */
 
 static inline int cgroup_init_early(void) { return 0; }
@@ -908,6 +909,9 @@ static inline int subsys_cgroup_allow_attach(struct cgroup *cgrp,
 {
 	return 0;
 }
+
+static inline void cgroup_sk_alloc(struct cgroup **skcg) {}
+static inline void cgroup_sk_free(struct cgroup *skcg) {}
 #endif /* !CONFIG_CGROUPS */
 
 #endif /* _LINUX_CGROUP_H */
