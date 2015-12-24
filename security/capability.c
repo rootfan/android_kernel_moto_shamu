@@ -887,6 +887,10 @@ static void cap_release_secctx(char *secdata, u32 seclen)
 {
 }
 
+void cap_inode_invalidate_secctx(struct inode *inode)
+{
+}
+
 static int cap_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen)
 {
 	return 0;
@@ -1104,6 +1108,7 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, secid_to_secctx);
 	set_to_cap_if_null(ops, secctx_to_secid);
 	set_to_cap_if_null(ops, release_secctx);
+	set_to_cap_if_null(ops, inode_invalidate_secctx);
 	set_to_cap_if_null(ops, inode_notifysecctx);
 	set_to_cap_if_null(ops, inode_setsecctx);
 	set_to_cap_if_null(ops, inode_getsecctx);

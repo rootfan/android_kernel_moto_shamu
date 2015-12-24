@@ -1115,6 +1115,12 @@ void security_release_secctx(char *secdata, u32 seclen)
 }
 EXPORT_SYMBOL(security_release_secctx);
 
+void security_inode_invalidate_secctx(struct inode *inode)
+{
+	return security_ops->inode_invalidate_secctx(inode);
+}
+EXPORT_SYMBOL(security_inode_invalidate_secctx);
+
 int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen)
 {
 	return security_ops->inode_notifysecctx(inode, ctx, ctxlen);
