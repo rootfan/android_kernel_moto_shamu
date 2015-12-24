@@ -698,7 +698,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
 }
 
-void security_inode_getsecid(const struct inode *inode, u32 *secid)
+void security_inode_getsecid(struct inode *inode, u32 *secid)
 {
 	security_ops->inode_getsecid(inode, secid);
 }
