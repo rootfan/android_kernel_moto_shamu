@@ -478,16 +478,21 @@ uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size)
  */
 static int ext4_d_revalidate(struct dentry *dentry, unsigned int flags)
 {
-	struct inode *dir = dentry->d_parent->d_inode;
-	struct ext4_crypt_info *ci = EXT4_I(dir)->i_crypt_info;
+	struct dentry *dir;
+	struct ext4_crypt_info *ci;
 	int dir_has_key, cached_with_key;
 
-	if (!ext4_encrypted_inode(dir))
+	dir = dget_parent(dentry);
+	if (!ext4_encrypted_inode(dir->d_inode)) {
+		dput(dir);
 		return 0;
+	}
+	ci = EXT4_I(dir->d_inode)->i_crypt_info;
 
 	/* this should eventually be an flag in d_flags */
 	cached_with_key = dentry->d_fsdata != NULL;
 	dir_has_key = (ci != NULL);
+	dput(dir);
 
 	/*
 	 * If the dentry was cached without the key, and it is a
