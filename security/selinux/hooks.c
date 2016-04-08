@@ -1594,7 +1594,7 @@ static int current_has_perm(const struct task_struct *tsk,
 
 /* Check whether a task is allowed to use a capability. */
 static int cred_has_capability(const struct cred *cred,
-			       int cap, int audit)
+			       int cap, int audit, bool initns)
 {
 	struct common_audit_data ad;
 	struct av_decision avd;
@@ -1608,10 +1608,10 @@ static int cred_has_capability(const struct cred *cred,
 
 	switch (CAP_TO_INDEX(cap)) {
 	case 0:
-		sclass = SECCLASS_CAPABILITY;
+		sclass = initns ? SECCLASS_CAPABILITY : SECCLASS_CAP_USERNS;
 		break;
 	case 1:
-		sclass = SECCLASS_CAPABILITY2;
+		sclass = initns ? SECCLASS_CAPABILITY2 : SECCLASS_CAP2_USERNS;
 		break;
 	default:
 		printk(KERN_ERR
@@ -2130,7 +2130,7 @@ static int selinux_capable(const struct cred *cred, struct user_namespace *ns,
 	if (rc)
 		return rc;
 
-	return cred_has_capability(cred, cap, audit);
+	return cred_has_capability(cred, cap, audit, ns == &init_user_ns);
 }
 
 static int selinux_quotactl(int cmds, int type, int id, struct super_block *sb)
@@ -3314,7 +3314,7 @@ static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 	case KDSKBENT:
 	case KDSKBSENT:
 		error = cred_has_capability(cred, CAP_SYS_TTY_CONFIG,
-					    SECURITY_CAP_AUDIT);
+					    SECURITY_CAP_AUDIT, true);
 		break;
 
 	/* default case assumes that the command will go
