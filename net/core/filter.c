@@ -1322,16 +1322,19 @@ static u64 bpf_skb_load_bytes(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
 	unsigned int len = (unsigned int) r4;
 	void *ptr;
 
-	if (unlikely((u32) offset > 0xffff || len > MAX_BPF_STACK))
-		return -EFAULT;
+	if (unlikely((u32) offset > 0xffff))
+		goto err_clear;
 
 	ptr = skb_header_pointer(skb, offset, len, to);
 	if (unlikely(!ptr))
-		return -EFAULT;
+		goto err_clear;
 	if (ptr != to)
 		memcpy(to, ptr, len);
 
 	return 0;
+err_clear:
+	memset(to, 0, len);
+	return -EFAULT;
 }
 
 static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
@@ -1340,7 +1343,7 @@ static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
-	.arg3_type	= ARG_PTR_TO_STACK,
+	.arg3_type	= ARG_PTR_TO_RAW_STACK,
 	.arg4_type	= ARG_CONST_STACK_SIZE,
 };
 
