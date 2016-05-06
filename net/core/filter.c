@@ -1260,6 +1260,21 @@ struct bpf_scratchpad {
 
 static DEFINE_PER_CPU(struct bpf_scratchpad, bpf_sp);
 
+static inline int bpf_try_make_writable(struct sk_buff *skb,
+					unsigned int write_len)
+{
+	int err;
+
+	if (!skb_cloned(skb))
+		return 0;
+	if (skb_clone_writable(skb, write_len))
+		return 0;
+	err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+	if (!err)
+		bpf_compute_data_end(skb);
+	return err;
+}
+
 static u64 bpf_skb_store_bytes(u64 r1, u64 r2, u64 r3, u64 r4, u64 flags)
 {
 	struct bpf_scratchpad *sp = this_cpu_ptr(&bpf_sp);
@@ -1282,7 +1297,7 @@ static u64 bpf_skb_store_bytes(u64 r1, u64 r2, u64 r3, u64 r4, u64 flags)
 	 */
 	if (unlikely((u32) offset > 0xffff || len > sizeof(sp->buff)))
 		return -EFAULT;
-	if (unlikely(skb_try_make_writable(skb, offset + len)))
+	if (unlikely(bpf_try_make_writable(skb, offset + len)))
 		return -EFAULT;
 
 	ptr = skb_header_pointer(skb, offset, len, sp->buff);
@@ -1363,7 +1378,7 @@ static u64 bpf_l3_csum_replace(u64 r1, u64 r2, u64 from, u64 to, u64 flags)
 	if (unlikely((u32) offset > 0xffff))
 		return -EFAULT;
 
-	if (unlikely(skb_try_make_writable(skb, offset + sizeof(sum))))
+	if (unlikely(bpf_try_make_writable(skb, offset + sizeof(sum))))
 		return -EFAULT;
 
 	ptr = skb_header_pointer(skb, offset, sizeof(sum), &sum);
@@ -1418,7 +1433,7 @@ static u64 bpf_l4_csum_replace(u64 r1, u64 r2, u64 from, u64 to, u64 flags)
 		return -EINVAL;
 	if (unlikely((u32) offset > 0xffff))
 		return -EFAULT;
-	if (unlikely(skb_try_make_writable(skb, offset + sizeof(sum))))
+	if (unlikely(bpf_try_make_writable(skb, offset + sizeof(sum))))
 		return -EFAULT;
 
 	ptr = skb_header_pointer(skb, offset, sizeof(sum), &sum);
@@ -2007,8 +2022,12 @@ static bool sk_filter_is_valid_access(int off, int size,
 				      enum bpf_access_type type,
 				      enum bpf_reg_type *reg_type)
 {
-	if (off == offsetof(struct __sk_buff, tc_classid))
+	switch (off) {
+	case offsetof(struct __sk_buff, tc_classid):
+	case offsetof(struct __sk_buff, data):
+	case offsetof(struct __sk_buff, data_end):
 		return false;
+	}
 
 	if (type == BPF_WRITE) {
 		switch (off) {
@@ -2158,6 +2177,20 @@ static u32 bpf_net_convert_ctx_access(enum bpf_access_type type, int dst_reg,
 			*insn++ = BPF_STX_MEM(BPF_H, dst_reg, src_reg, ctx_off);
 		else
 			*insn++ = BPF_LDX_MEM(BPF_H, dst_reg, src_reg, ctx_off);
+		break;
+
+	case offsetof(struct __sk_buff, data):
+		*insn++ = BPF_LDX_MEM(bytes_to_bpf_size(FIELD_SIZEOF(struct sk_buff, data)),
+				      dst_reg, src_reg,
+				      offsetof(struct sk_buff, data));
+		break;
+
+	case offsetof(struct __sk_buff, data_end):
+		ctx_off -= offsetof(struct __sk_buff, data_end);
+		ctx_off += offsetof(struct sk_buff, cb);
+		ctx_off += offsetof(struct bpf_skb_data_end, data_end);
+		*insn++ = BPF_LDX_MEM(bytes_to_bpf_size(sizeof(void *)),
+				      dst_reg, src_reg, ctx_off);
 		break;
 
 	case offsetof(struct __sk_buff, tc_index):
