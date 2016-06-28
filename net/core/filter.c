@@ -1814,6 +1814,28 @@ static const struct bpf_func_proto bpf_skb_change_proto_proto = {
 	.arg3_type	= ARG_ANYTHING,
 };
 
+static u64 bpf_skb_change_type(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+{
+	struct sk_buff *skb = (struct sk_buff *) (long) r1;
+	u32 pkt_type = r2;
+
+	/* We only allow a restricted subset to be changed for now. */
+	if (unlikely(skb->pkt_type > PACKET_OTHERHOST ||
+		     pkt_type > PACKET_OTHERHOST))
+		return -EINVAL;
+
+	skb->pkt_type = pkt_type;
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_skb_change_type_proto = {
+	.func		= bpf_skb_change_type,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
+
 bool bpf_helper_changes_skb_data(void *func)
 {
 	if (func == bpf_skb_store_bytes)
@@ -1874,6 +1896,8 @@ tc_cls_act_func_proto(enum bpf_func_id func_id)
 		return &bpf_get_cgroup_classid_proto;
 	case BPF_FUNC_skb_change_proto:
 		return &bpf_skb_change_proto_proto;
+	case BPF_FUNC_skb_change_type:
+		return &bpf_skb_change_type_proto;
 	case BPF_FUNC_redirect:
 		return &bpf_redirect_proto;
 	case BPF_FUNC_get_route_realm:
