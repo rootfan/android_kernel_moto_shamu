@@ -1238,14 +1238,9 @@ int sk_attach_bpf(u32 ufd, struct sock *sk)
 	if (sock_flag(sk, SOCK_FILTER_LOCKED))
 		return -EPERM;
 
-	prog = bpf_prog_get(ufd);
+	prog = bpf_prog_get_type(ufd, BPF_PROG_TYPE_SOCKET_FILTER);
 	if (IS_ERR(prog))
 		return PTR_ERR(prog);
-
-	if (prog->type != BPF_PROG_TYPE_SOCKET_FILTER) {
-		bpf_prog_put(prog);
-		return -EINVAL;
-	}
 
 	err = __sk_attach_prog(prog, sk);
 	if (err < 0) {
