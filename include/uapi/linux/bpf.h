@@ -94,6 +94,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_SCHED_CLS,
 	BPF_PROG_TYPE_SCHED_ACT,
 	BPF_PROG_TYPE_TRACEPOINT,
+	BPF_PROG_TYPE_XDP,
 };
 
 #define BPF_PSEUDO_MAP_FD	1
@@ -377,6 +378,25 @@ struct __sk_buff {
 	__u32 cb[5];
 	__u32 hash;
 	__u32 tc_classid;
+	__u32 data;
+	__u32 data_end;
+};
+
+/* User return codes for XDP prog type.
+ * A valid XDP program must return one of these defined values. All other
+ * return codes are reserved for future use. Unknown return codes will result
+ * in packet drop.
+ */
+enum xdp_action {
+	XDP_ABORTED = 0,
+	XDP_DROP,
+	XDP_PASS,
+};
+
+/* user accessible metadata for XDP packet hook
+ * new fields must be added to the end of this structure
+ */
+struct xdp_md {
 	__u32 data;
 	__u32 data_end;
 };
