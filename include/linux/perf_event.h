@@ -59,7 +59,7 @@ struct perf_callchain_entry {
 };
 
 typedef unsigned long (*perf_copy_f)(void *dst, const void *src,
-				     unsigned long len);
+				     unsigned long off, unsigned long len);
 
 struct perf_raw_frag {
 	union {
