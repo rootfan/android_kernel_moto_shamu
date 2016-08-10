@@ -5385,6 +5385,8 @@ static int cgroup_mkdir(struct kernfs_node *parent_kn, const char *name,
 	if (ret)
 		goto out_destroy;
 
+	trace_cgroup_mkdir(cgrp);
+
 	/* let's create and online css's */
 	kernfs_activate(kn);
 
