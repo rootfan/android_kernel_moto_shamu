@@ -92,14 +92,13 @@ int sk_filter_trim_cap(struct sock *sk, struct sk_buff *skb, unsigned int cap)
 }
 EXPORT_SYMBOL(sk_filter_trim_cap);
 
-static u64 __skb_get_pay_offset(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
+BPF_CALL_1(__skb_get_pay_offset, struct sk_buff *, skb)
 {
-	return __skb_get_poff((struct sk_buff *)(unsigned long) ctx);
+	return __skb_get_poff(skb);
 }
 
-static u64 __skb_get_nlattr(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
+BPF_CALL_3(__skb_get_nlattr, struct sk_buff *, skb, u32, a, u32, x)
 {
-	struct sk_buff *skb = (struct sk_buff *)(unsigned long) ctx;
 	struct nlattr *nla;
 
 	if (skb_is_nonlinear(skb))
@@ -118,9 +117,8 @@ static u64 __skb_get_nlattr(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
 	return 0;
 }
 
-static u64 __skb_get_nlattr_nest(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
+BPF_CALL_3(__skb_get_nlattr_nest, struct sk_buff *, skb, u32, a, u32, x)
 {
-	struct sk_buff *skb = (struct sk_buff *)(unsigned long) ctx;
 	struct nlattr *nla;
 
 	if (skb_is_nonlinear(skb))
@@ -143,7 +141,7 @@ static u64 __skb_get_nlattr_nest(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
 	return 0;
 }
 
-static u64 __get_raw_cpu_id(u64 ctx, u64 a, u64 x, u64 r4, u64 r5)
+BPF_CALL_0(__get_raw_cpu_id)
 {
 	return raw_smp_processor_id();
 }
@@ -1280,12 +1278,9 @@ static inline void bpf_push_mac_rcsum(struct sk_buff *skb)
 		skb_postpush_rcsum(skb, skb_mac_header(skb), skb->mac_len);
 }
 
-static u64 bpf_skb_store_bytes(u64 r1, u64 r2, u64 r3, u64 r4, u64 flags)
+BPF_CALL_5(bpf_skb_store_bytes, struct sk_buff *, skb, u32, offset,
+	   const void *, from, u32, len, u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
-	unsigned int offset = (unsigned int) r2;
-	void *from = (void *) (long) r3;
-	unsigned int len = (unsigned int) r4;
 	void *ptr;
 
 	if (unlikely(flags & ~(BPF_F_RECOMPUTE_CSUM | BPF_F_INVALIDATE_HASH)))
@@ -1322,12 +1317,9 @@ static const struct bpf_func_proto bpf_skb_store_bytes_proto = {
 	.arg5_type	= ARG_ANYTHING,
 };
 
-static u64 bpf_skb_load_bytes(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_4(bpf_skb_load_bytes, const struct sk_buff *, skb, u32, offset,
+	   void *, to, u32, len)
 {
-	const struct sk_buff *skb = (const struct sk_buff *)(unsigned long) r1;
-	unsigned int offset = (unsigned int) r2;
-	void *to = (void *)(unsigned long) r3;
-	unsigned int len = (unsigned int) r4;
 	void *ptr;
 
 	if (unlikely(offset > 0xffff))
@@ -1355,10 +1347,9 @@ static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
 	.arg4_type	= ARG_CONST_STACK_SIZE,
 };
 
-static u64 bpf_l3_csum_replace(u64 r1, u64 r2, u64 from, u64 to, u64 flags)
+BPF_CALL_5(bpf_l3_csum_replace, struct sk_buff *, skb, u32, offset,
+	   u64, from, u64, to, u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
-	unsigned int offset = (unsigned int) r2;
 	__sum16 *ptr;
 
 	if (unlikely(flags & ~(BPF_F_HDR_FIELD_MASK)))
@@ -1400,12 +1391,11 @@ static const struct bpf_func_proto bpf_l3_csum_replace_proto = {
 	.arg5_type	= ARG_ANYTHING,
 };
 
-static u64 bpf_l4_csum_replace(u64 r1, u64 r2, u64 from, u64 to, u64 flags)
+BPF_CALL_5(bpf_l4_csum_replace, struct sk_buff *, skb, u32, offset,
+	   u64, from, u64, to, u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
 	bool is_pseudo = flags & BPF_F_PSEUDO_HDR;
 	bool is_mmzero = flags & BPF_F_MARK_MANGLED_0;
-	unsigned int offset = (unsigned int) r2;
 	__sum16 *ptr;
 
 	if (unlikely(flags & ~(BPF_F_MARK_MANGLED_0 | BPF_F_PSEUDO_HDR |
@@ -1453,12 +1443,11 @@ static const struct bpf_func_proto bpf_l4_csum_replace_proto = {
 	.arg5_type	= ARG_ANYTHING,
 };
 
-static u64 bpf_csum_diff(u64 r1, u64 from_size, u64 r3, u64 to_size, u64 seed)
+BPF_CALL_5(bpf_csum_diff, __be32 *, from, u32, from_size,
+	   __be32 *, to, u32, to_size, __wsum, seed)
 {
 	struct bpf_scratchpad *sp = this_cpu_ptr(&bpf_sp);
-	u64 diff_size = from_size + to_size;
-	__be32 *from = (__be32 *) (long) r1;
-	__be32 *to   = (__be32 *) (long) r3;
+	u32 diff_size = from_size + to_size;
 	int i, j = 0;
 
 	/* This is quite flexible, some examples:
@@ -1516,9 +1505,8 @@ static inline int __bpf_tx_skb(struct net_device *dev, struct sk_buff *skb)
 	return ret;
 }
 
-static u64 bpf_clone_redirect(u64 r1, u64 ifindex, u64 flags, u64 r4, u64 r5)
+BPF_CALL_3(bpf_clone_redirect, struct sk_buff *, skb, u32, ifindex, u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
 	struct net_device *dev;
 
 	if (unlikely(flags & ~(BPF_F_INGRESS)))
@@ -1554,7 +1542,7 @@ struct redirect_info {
 
 static DEFINE_PER_CPU(struct redirect_info, redirect_info);
 
-static u64 bpf_redirect(u64 ifindex, u64 flags, u64 r3, u64 r4, u64 r5)
+BPF_CALL_2(bpf_redirect, u32, ifindex, u64, flags)
 {
 	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
 
@@ -1593,7 +1581,7 @@ static const struct bpf_func_proto bpf_redirect_proto = {
 	.arg2_type      = ARG_ANYTHING,
 };
 
-static u64 bpf_get_cgroup_classid(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_1(bpf_get_cgroup_classid, const struct sk_buff *, skb)
 {
 	return 0;
 }
@@ -1605,9 +1593,9 @@ static const struct bpf_func_proto bpf_get_cgroup_classid_proto = {
 	.arg1_type      = ARG_PTR_TO_CTX,
 };
 
-static u64 bpf_get_route_realm(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_1(bpf_get_route_realm, const struct sk_buff *, skb)
 {
-	return dst_tclassid((struct sk_buff *) (unsigned long) r1);
+	return dst_tclassid(skb);
 }
 
 static const struct bpf_func_proto bpf_get_route_realm_proto = {
@@ -1617,14 +1605,14 @@ static const struct bpf_func_proto bpf_get_route_realm_proto = {
 	.arg1_type      = ARG_PTR_TO_CTX,
 };
 
-static u64 bpf_get_hash_recalc(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_1(bpf_get_hash_recalc, struct sk_buff *, skb)
 {
 	/* If skb_clear_hash() was called due to mangling, we can
 	 * trigger SW recalculation here. Later access to hash
 	 * can then use the inline skb->hash via context directly
 	 * instead of calling this helper again.
 	 */
-	return skb_get_hash((struct sk_buff *) (unsigned long) r1);
+	return skb_get_rxhash(skb);
 }
 
 static const struct bpf_func_proto bpf_get_hash_recalc_proto = {
@@ -1792,10 +1780,9 @@ static int bpf_skb_proto_xlat(struct sk_buff *skb, __be16 to_proto)
 	return -ENOTSUPP;
 }
 
-static u64 bpf_skb_change_proto(u64 r1, u64 r2, u64 flags, u64 r4, u64 r5)
+BPF_CALL_3(bpf_skb_change_proto, struct sk_buff *, skb, __be16, proto,
+	   u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
-	__be16 proto = (__force __be16) r2;
 	int ret;
 
 	if (unlikely(flags))
@@ -1832,11 +1819,8 @@ static const struct bpf_func_proto bpf_skb_change_proto_proto = {
 	.arg3_type	= ARG_ANYTHING,
 };
 
-static u64 bpf_skb_change_type(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_2(bpf_skb_change_type, struct sk_buff *, skb, u32, pkt_type)
 {
-	struct sk_buff *skb = (struct sk_buff *) (long) r1;
-	u32 pkt_type = r2;
-
 	/* We only allow a restricted subset to be changed for now. */
 	if (unlikely(skb->pkt_type > PACKET_OTHERHOST ||
 		     pkt_type > PACKET_OTHERHOST))
@@ -1887,12 +1871,11 @@ static int bpf_skb_trim_rcsum(struct sk_buff *skb, unsigned int new_len)
 	return __skb_trim_rcsum(skb, new_len);
 }
 
-static u64 bpf_skb_change_tail(u64 r1, u64 r2, u64 flags, u64 r4, u64 r5)
+BPF_CALL_3(bpf_skb_change_tail, struct sk_buff *, skb, u32, new_len,
+	   u64, flags)
 {
-	struct sk_buff *skb = (struct sk_buff *)(long) r1;
 	u32 max_len = __bpf_skb_max_len(skb);
 	u32 min_len = __bpf_skb_min_len(skb);
-	u32 new_len = (u32) r2;
 	int ret;
 
 	if (unlikely(flags || new_len > max_len || new_len < min_len))
@@ -1968,13 +1951,10 @@ static unsigned long bpf_skb_copy(void *dst_buff, const void *skb,
 	return 0;
 }
 
-static u64 bpf_skb_event_output(u64 r1, u64 r2, u64 flags, u64 r4,
-				u64 meta_size)
+BPF_CALL_5(bpf_skb_event_output, struct sk_buff *, skb, struct bpf_map *, map,
+	   u64, flags, void *, meta, u64, meta_size)
 {
-	struct sk_buff *skb = (struct sk_buff *)(long) r1;
-	struct bpf_map *map = (struct bpf_map *)(long) r2;
 	u64 skb_size = (flags & BPF_F_CTXLEN_MASK) >> 32;
-	void *meta = (void *)(long) r4;
 
 	if (unlikely(flags & ~(BPF_F_CTXLEN_MASK | BPF_F_INDEX_MASK)))
 		return -EINVAL;
@@ -1996,24 +1976,20 @@ static const struct bpf_func_proto bpf_skb_event_output_proto = {
 	.arg5_type	= ARG_CONST_STACK_SIZE,
 };
 
-#ifdef CONFIG_SOCK_CGROUP_DATA
-static u64 bpf_skb_under_cgroup(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5)
+BPF_CALL_3(bpf_skb_under_cgroup, struct sk_buff *, skb, struct bpf_map *, map,
+	   u32, idx)
 {
-	struct sk_buff *skb = (struct sk_buff *)(long)r1;
-	struct bpf_map *map = (struct bpf_map *)(long)r2;
 	struct bpf_array *array = container_of(map, struct bpf_array, map);
 	struct cgroup *cgrp;
 	struct sock *sk;
-	u32 i = (u32)r3;
 
 	sk = skb->sk;
 	if (!sk || !sk_fullsock(sk))
 		return -ENOENT;
-
-	if (unlikely(i >= array->map.max_entries))
+	if (unlikely(idx >= array->map.max_entries))
 		return -E2BIG;
 
-	cgrp = READ_ONCE(array->ptrs[i]);
+	cgrp = READ_ONCE(array->ptrs[idx]);
 	if (unlikely(!cgrp))
 		return -EAGAIN;
 
@@ -2036,13 +2012,10 @@ static unsigned long bpf_xdp_copy(void *dst_buff, const void *src_buff,
 	return 0;
 }
 
-static u64 bpf_xdp_event_output(u64 r1, u64 r2, u64 flags, u64 r4,
-				u64 meta_size)
+BPF_CALL_5(bpf_xdp_event_output, struct xdp_buff *, xdp, struct bpf_map *, map,
+	   u64, flags, void *, meta, u64, meta_size)
 {
-	struct xdp_buff *xdp = (struct xdp_buff *)(long) r1;
-	struct bpf_map *map = (struct bpf_map *)(long) r2;
 	u64 xdp_size = (flags & BPF_F_CTXLEN_MASK) >> 32;
-	void *meta = (void *)(long) r4;
 
 	if (unlikely(flags & ~(BPF_F_CTXLEN_MASK | BPF_F_INDEX_MASK)))
 		return -EINVAL;
