@@ -20,6 +20,7 @@
 #include <linux/workqueue.h>
 #include <linux/xattr.h>
 #include <linux/fs.h>
+#include <linux/bpf-cgroup.h>
 
 #ifdef CONFIG_CGROUPS
 
@@ -239,6 +240,9 @@ struct cgroup {
 
 	/* directory xattrs */
 	struct simple_xattrs xattrs;
+
+	/* used to store eBPF programs */
+	struct cgroup_bpf bpf;
 };
 
 #define MAX_CGROUP_ROOT_NAMELEN 64
