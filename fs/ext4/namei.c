@@ -3239,6 +3239,12 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 	int inlined = 0, new_inlined = 0;
 	struct ext4_dir_entry_2 *parent_de;
 
+	if ((ext4_encrypted_inode(old_dir) &&
+	     !ext4_has_encryption_key(old_dir)) ||
+	    (ext4_encrypted_inode(new_dir) &&
+	     !ext4_has_encryption_key(new_dir)))
+		return -ENOKEY;
+
 	dquot_initialize(old_dir);
 	dquot_initialize(new_dir);
 
