@@ -1159,6 +1159,11 @@ struct task_struct {
 	/* task is su (lineage-only, LVT-2017-000[1-3]) */
 	unsigned task_is_su:1;
 
+#ifdef CONFIG_CGROUPS
+	/* disallow userland-initiated cgroup migration */
+	unsigned no_cgroup_migration:1;
+#endif
+
 	unsigned long atomic_flags; /* Flags needing atomic access. */
 
 	struct restart_block restart_block;
