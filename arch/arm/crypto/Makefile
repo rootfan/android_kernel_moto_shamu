@@ -10,6 +10,7 @@ obj-$(CONFIG_CRYPTO_SHA256_ARM) += sha256-arm.o
 obj-$(CONFIG_CRYPTO_SHA512_ARM_NEON) += sha512-arm-neon.o
 obj-$(CONFIG_CRYPTO_SPECK_NEON) += speck-neon.o
 obj-$(CONFIG_CRYPTO_CHACHA20_NEON) += chacha-neon.o
+obj-$(CONFIG_CRYPTO_NHPOLY1305_NEON) += nhpoly1305-neon.o
 
 aes-arm-y	:= aes-armv4.o aes_glue.o
 aes-arm-bs-y	:= aesbs-core.o aesbs-glue.o
@@ -20,6 +21,7 @@ sha256-arm-y	:= sha256-core.o sha256_glue.o $(sha256-arm-neon-y)
 sha512-arm-neon-y := sha512-armv7-neon.o sha512_neon_glue.o
 speck-neon-y := speck-neon-core.o speck-neon-glue.o
 chacha-neon-y := chacha-neon-core.o chacha-neon-glue.o
+nhpoly1305-neon-y := nh-neon-core.o nhpoly1305-neon-glue.o
 
 quiet_cmd_perl = PERL    $@
       cmd_perl = $(PERL) $(<) > $(@)
