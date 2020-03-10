@@ -5412,6 +5412,10 @@ void cgroup_sk_alloc(struct cgroup **skcg)
 	struct cgroup *cgrp;
 	static struct cgroupfs_root *bpfRoot = NULL;
 
+	/* Don't associate the sock with unrelated interrupted task's cgroup. */
+	if (in_interrupt())
+		return;
+
 	if(bpfRoot == NULL)
 		bpfRoot = findBpfCg();
 
