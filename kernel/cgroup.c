@@ -5426,9 +5426,17 @@ void cgroup_sk_alloc(struct cgroup **skcg)
 		*skcg = NULL;
 }
 
+void cgroup_sk_clone(struct cgroup *skcg)
+{
+	/* Socket clone path */
+	if (skcg)
+		atomic_inc(&skcg->count);
+}
+
 void cgroup_sk_free(struct cgroup *skcg)
 {
-	atomic_dec(&skcg->count);
+	if (skcg)
+		atomic_dec(&skcg->count);
 }
 
 #ifdef CONFIG_CGROUP_BPF
