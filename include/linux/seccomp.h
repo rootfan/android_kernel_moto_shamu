@@ -28,11 +28,11 @@ struct seccomp {
 };
 
 #ifdef CONFIG_HAVE_ARCH_SECCOMP_FILTER
-extern int __secure_computing(void);
-static inline int secure_computing(void)
+extern int __secure_computing(int);
+static inline int secure_computing(int this_syscall)
 {
 	if (unlikely(test_thread_flag(TIF_SECCOMP)))
-		return  __secure_computing();
+		return  __secure_computing(this_syscall);
 	return 0;
 }
 #else
