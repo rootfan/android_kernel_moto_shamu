@@ -2984,8 +2984,11 @@ struct cgroup *cgroup_next_descendant_pre(struct cgroup *pos,
 	WARN_ON_ONCE(!rcu_read_lock_held());
 
 	/* if first iteration, pretend we just visited @cgroup */
-	if (!pos)
+	if (!pos) {
+		if (list_empty(&cgroup->children))
+			return NULL;
 		pos = cgroup;
+	}
 
 	/* visit the first child if exists */
 	next = list_first_or_null_rcu(&pos->children, struct cgroup, sibling);
@@ -2993,14 +2996,14 @@ struct cgroup *cgroup_next_descendant_pre(struct cgroup *pos,
 		return next;
 
 	/* no child, visit my or the closest ancestor's next sibling */
-	while (pos != cgroup) {
+	do {
 		next = list_entry_rcu(pos->sibling.next, struct cgroup,
 				      sibling);
 		if (&next->sibling != &pos->parent->children)
 			return next;
 
 		pos = pos->parent;
-	}
+	} while (pos != cgroup);
 
 	return NULL;
 }
