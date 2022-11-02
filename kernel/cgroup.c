@@ -2796,17 +2796,13 @@ static void cgroup_cfts_commit(struct cgroup_subsys *ss,
 {
 	LIST_HEAD(pending);
 	struct cgroup *cgrp, *n;
-	struct super_block *sb = ss->root->sb;
 
 	/* %NULL @cfts indicates abort and don't bother if @ss isn't attached */
-	if (cfts && ss->root != &rootnode &&
-	    atomic_inc_not_zero(&sb->s_active)) {
+	if (cfts && ss->root != &rootnode) {
 		list_for_each_entry(cgrp, &ss->root->allcg_list, allcg_node) {
 			dget(cgrp->dentry);
 			list_add_tail(&cgrp->cft_q_node, &pending);
 		}
-	} else {
-		sb = NULL;
 	}
 
 	mutex_unlock(&cgroup_mutex);
@@ -2828,9 +2824,6 @@ static void cgroup_cfts_commit(struct cgroup_subsys *ss,
 		list_del_init(&cgrp->cft_q_node);
 		dput(cgrp->dentry);
 	}
-
-	if (sb)
-		deactivate_super(sb);
 
 	mutex_unlock(&cgroup_cft_mutex);
 }
