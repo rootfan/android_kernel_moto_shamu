@@ -2796,7 +2796,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 		return NULL;
 
 retry_cpuset:
-	cpuset_mems_cookie = read_mems_allowed_begin();
+	cpuset_mems_cookie = get_mems_allowed();
 
 	/* The preferred zone is used for statistics later */
 	first_zones_zonelist(zonelist, high_zoneidx,
@@ -2834,7 +2834,7 @@ out:
 	 * the mask is being updated. If a page allocation is about to fail,
 	 * check if the cpuset changed during allocation and if so, retry.
 	 */
-	if (unlikely(!page && read_mems_allowed_retry(cpuset_mems_cookie)))
+	if (unlikely(!put_mems_allowed(cpuset_mems_cookie) && !page))
 		goto retry_cpuset;
 
 	memcg_kmem_commit_charge(page, memcg, order);
@@ -3101,9 +3101,9 @@ bool skip_free_areas_node(unsigned int flags, int nid)
 		goto out;
 
 	do {
-		cpuset_mems_cookie = read_mems_allowed_begin();
+		cpuset_mems_cookie = get_mems_allowed();
 		ret = !node_isset(nid, cpuset_current_mems_allowed);
-	} while (read_mems_allowed_retry(cpuset_mems_cookie));
+	} while (!put_mems_allowed(cpuset_mems_cookie));
 out:
 	return ret;
 }
