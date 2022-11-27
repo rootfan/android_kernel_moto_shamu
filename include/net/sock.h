@@ -399,7 +399,6 @@ struct sock {
 #ifdef CONFIG_SECURITY
 	void			*sk_security;
 #endif
-	__u32			sk_mark;
 	kuid_t			sk_uid;
 	struct sock_cgroup_data	sk_cgrp_data;
 	struct cg_proto		*sk_cgrp;
