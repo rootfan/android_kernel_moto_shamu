@@ -60,16 +60,11 @@ static int ext4_create_encryption_context_from_policy(
 	ctx.format = EXT4_ENCRYPTION_CONTEXT_FORMAT_V1;
 	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
 	       EXT4_KEY_DESCRIPTOR_SIZE);
-	if (!ext4_valid_contents_enc_mode(policy->contents_encryption_mode)) {
+	if (!ext4_valid_enc_modes(policy->contents_encryption_mode,
+				  policy->filenames_encryption_mode)) {
 		printk(KERN_WARNING
 		       "%s: Invalid contents encryption mode %d\n", __func__,
 			policy->contents_encryption_mode);
-		return -EINVAL;
-	}
-	if (!ext4_valid_filenames_enc_mode(policy->filenames_encryption_mode)) {
-		printk(KERN_WARNING
-		       "%s: Invalid filenames encryption mode %d\n", __func__,
-			policy->filenames_encryption_mode);
 		return -EINVAL;
 	}
 	if (policy->flags & ~EXT4_POLICY_FLAGS_VALID)
@@ -181,8 +176,8 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
 	if (!parent_ci || !child_ci)
 		return 0;
 
-	return (memcmp(parent_ci->ci_master_key,
-		       child_ci->ci_master_key,
+	return (memcmp(parent_ci->ci_master_key_descriptor,
+		       child_ci->ci_master_key_descriptor,
 		       EXT4_KEY_DESCRIPTOR_SIZE) == 0 &&
 		(parent_ci->ci_data_mode == child_ci->ci_data_mode) &&
 		(parent_ci->ci_filename_mode == child_ci->ci_filename_mode) &&
@@ -222,7 +217,7 @@ int ext4_inherit_context(struct inode *parent, struct inode *child)
 		ctx.contents_encryption_mode = ci->ci_data_mode;
 		ctx.filenames_encryption_mode = ci->ci_filename_mode;
 		ctx.flags = ci->ci_flags;
-		memcpy(ctx.master_key_descriptor, ci->ci_master_key,
+		memcpy(ctx.master_key_descriptor, ci->ci_master_key_descriptor,
 		       EXT4_KEY_DESCRIPTOR_SIZE);
 	}
 	get_random_bytes(ctx.nonce, EXT4_KEY_DERIVATION_NONCE_SIZE);
